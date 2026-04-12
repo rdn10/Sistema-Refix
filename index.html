@@ -1,0 +1,1878 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MindFix</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><path d=%22M50 5 L90 27.5 L90 72.5 L50 95 L10 72.5 L10 27.5 Z%22 fill=%22none%22 stroke=%22%233b82f6%22 stroke-width=%2212%22 stroke-linejoin=%22round%22/></svg>">
+    <!-- Configuração do Tailwind para Dark Mode Manual -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { darkMode: "class" };
+    </script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+
+      /* Classes Especiais do Dark Mode */
+      .dark .glass-card {
+        background: rgba(17, 17, 17, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .dark .glass-header {
+        background: rgba(5, 5, 5, 0.85);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .dark .glow-blue {
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+      }
+
+      .view-section {
+        display: none;
+      }
+      .view-section.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #333;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #3b82f6;
+      }
+
+      @media (max-width: 768px) {
+        #sidebar {
+          transform: translateX(-100%);
+          position: absolute;
+          z-index: 50;
+          height: 100%;
+        }
+        #sidebar.open {
+          transform: translateX(0);
+          box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+        }
+        #overlay.open {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="bg-[#F4F4F9] dark:bg-[#050505] text-gray-800 dark:text-[#E2E8F0] antialiased h-screen overflow-hidden relative transition-colors duration-300 selection:bg-blue-600 selection:text-white"
+  >
+    <div
+      id="overlay"
+      onclick="toggleSidebar()"
+      class="hidden fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm"
+    ></div>
+
+    <!-- TELA DE LOGIN -->
+    <div
+      id="auth-view"
+      class="absolute inset-0 bg-gray-50 dark:bg-[#050505] z-50 flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white dark:bg-transparent dark:glass-card p-8 rounded-2xl shadow-2xl border border-gray-200 dark:border-none w-full max-w-[400px] dark:glow-blue"
+      >
+        <div
+          class="flex items-center gap-3 text-blue-600 dark:text-blue-500 justify-center mb-8"
+        >
+          <i data-lucide="hexagon" class="w-10 h-10"></i
+          ><span
+            class="font-black text-3xl tracking-tight text-gray-900 dark:text-white"
+            >MindFix</span
+          >
+        </div>
+        <form id="form-login" onsubmit="fazerLogin(event)" class="space-y-4">
+          <input
+            type="email"
+            id="login-email"
+            required
+            placeholder="E-mail"
+            class="w-full bg-gray-50 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] p-4 rounded-xl text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all"
+          />
+          <input
+            type="password"
+            id="login-senha"
+            required
+            placeholder="Senha"
+            class="w-full bg-gray-50 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] p-4 rounded-xl text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all"
+          />
+          <button
+            type="submit"
+            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)] uppercase tracking-widest text-sm mt-2"
+          >
+            Acessar Sistema
+          </button>
+          <p class="text-xs text-center text-gray-500 mt-4">
+            Não tem empresa?
+            <a
+              href="#"
+              onclick="toggleAuthMode()"
+              class="text-blue-600 dark:text-blue-500 font-bold hover:underline"
+              >Cadastre-se</a
+            >
+          </p>
+        </form>
+        <form
+          id="form-register"
+          onsubmit="fazerCadastro(event)"
+          class="space-y-4 hidden"
+        >
+          <input
+            type="text"
+            id="reg-empresa"
+            placeholder="Nome da Loja"
+            required
+            class="w-full bg-gray-50 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] p-3 rounded-xl text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500"
+          /><input
+            type="text"
+            id="reg-nome"
+            placeholder="Seu Nome"
+            required
+            class="w-full bg-gray-50 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] p-3 rounded-xl text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500"
+          /><input
+            type="email"
+            id="reg-email"
+            placeholder="Seu E-mail"
+            required
+            class="w-full bg-gray-50 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] p-3 rounded-xl text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500"
+          /><input
+            type="password"
+            id="reg-senha"
+            placeholder="Crie uma Senha"
+            required
+            class="w-full bg-gray-50 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] p-3 rounded-xl text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500"
+          /><button
+            type="submit"
+            class="w-full bg-green-600 dark:bg-white dark:text-black hover:bg-gray-200 font-black py-3 rounded-xl transition-all uppercase tracking-widest text-sm mt-2 text-white"
+          >
+            Criar Empresa
+          </button>
+          <p class="text-xs text-center text-gray-500 mt-4">
+            Já tem conta?
+            <a
+              href="#"
+              onclick="toggleAuthMode()"
+              class="text-blue-600 dark:text-blue-500 font-bold hover:underline"
+              >Faça Login</a
+            >
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <!-- TELA BLOQUEADO -->
+    <div
+      id="blocked-view"
+      class="hidden absolute inset-0 bg-gray-900/95 z-[100] flex items-center justify-center p-4 text-center backdrop-blur-md"
+    >
+      <div
+        class="bg-white dark:bg-transparent dark:glass-card rounded-3xl p-10 max-w-md w-full border border-red-500/50 glow-blue"
+      >
+        <i data-lucide="lock" class="w-16 h-16 text-red-500 mx-auto mb-6"></i>
+        <h2
+          class="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2"
+        >
+          Acesso Bloqueado
+        </h2>
+        <p class="text-gray-500 dark:text-gray-400 mb-8 font-medium">
+          Sua assinatura expirou. Regularize para continuar.
+        </p>
+        <button
+          onclick="fazerLogout()"
+          class="bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-white px-6 py-3 rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-gray-200 dark:hover:bg-[#333] border border-gray-200 dark:border-[#333]"
+        >
+          Sair da Conta
+        </button>
+      </div>
+    </div>
+
+    <div id="app-view" class="hidden flex h-full w-full">
+      <!-- SIDEBAR -->
+      <aside
+        id="sidebar"
+        class="w-72 bg-white dark:bg-[#0A0A0A] border-r border-gray-200 dark:border-[#1E1E1E] flex flex-col transition-transform duration-300 z-50"
+      >
+        <div
+          class="h-20 flex items-center px-6 border-b border-gray-200 dark:border-[#1E1E1E] justify-between"
+        >
+          <div class="flex items-center gap-3 text-blue-600 dark:text-blue-500">
+            <i
+              data-lucide="hexagon"
+              class="w-8 h-8 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+            ></i
+            ><span
+              class="font-black text-2xl text-gray-900 dark:text-white tracking-tighter"
+              >MindFix</span
+            >
+          </div>
+          <button onclick="toggleSidebar()" class="md:hidden text-gray-400">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+          <button
+            onclick="navigate('dashboard')"
+            class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold rounded-xl transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#1A1A1A]"
+            data-target="dashboard"
+          >
+            <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
+          </button>
+          <button
+            onclick="navigate('estoque')"
+            class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold rounded-xl transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#1A1A1A]"
+            data-target="estoque"
+          >
+            <i data-lucide="package" class="w-5 h-5"></i> Estoque
+          </button>
+          <button
+            onclick="navigate('servicos')"
+            class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold rounded-xl transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#1A1A1A]"
+            data-target="servicos"
+          >
+            <i data-lucide="briefcase" class="w-5 h-5"></i> Serviços (O.S)
+          </button>
+          <button
+            onclick="navigate('pedidos')"
+            class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold rounded-xl transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#1A1A1A]"
+            data-target="pedidos"
+          >
+            <i data-lucide="shopping-bag" class="w-5 h-5"></i> Pedidos
+          </button>
+          <div
+            class="admin-only hidden pt-6 mt-6 border-t border-gray-200 dark:border-[#1E1E1E]"
+          >
+            <p
+              class="px-4 text-[10px] font-black uppercase text-gray-500 dark:text-gray-600 mb-2 tracking-widest"
+            >
+              Gestão
+            </p>
+            <button
+              onclick="navigate('financeiro')"
+              class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold rounded-xl transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#1A1A1A]"
+              data-target="financeiro"
+            >
+              <i data-lucide="wallet" class="w-5 h-5"></i> Financeiro</button
+            ><button
+              onclick="navigate('usuarios')"
+              class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold rounded-xl transition-all text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#1A1A1A] mt-1"
+              data-target="usuarios"
+            >
+              <i data-lucide="users" class="w-5 h-5"></i> Equipe
+            </button>
+          </div>
+          <button
+            id="menu-master"
+            onclick="navigate('master')"
+            class="hidden w-full flex items-center gap-3 px-4 py-3.5 text-sm font-black text-white bg-red-600 rounded-xl mt-4 hover:bg-red-700 uppercase transition-all shadow-md"
+          >
+            <i data-lucide="shield-check" class="w-5 h-5"></i> Root Access
+          </button>
+        </nav>
+        <div
+          class="px-6 py-4 border-t border-gray-200 dark:border-[#1E1E1E] bg-gray-50 dark:bg-[#0A0A0A]"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <p
+              class="text-[10px] font-black uppercase text-gray-500 dark:text-gray-600 tracking-widest"
+            >
+              Sistema
+            </p>
+            <span
+              id="ind-filtro-lateral"
+              class="hidden w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_10px_#3b82f6]"
+            ></span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div
+              class="bg-white dark:bg-[#111] border border-gray-200 dark:border-[#222] p-2 rounded-lg"
+            >
+              <p
+                class="text-xs font-black text-gray-900 dark:text-white"
+                id="global-cnt-srv"
+              >
+                0
+              </p>
+              <p
+                class="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase"
+              >
+                OS
+              </p>
+            </div>
+            <div
+              class="bg-white dark:bg-[#111] border border-gray-200 dark:border-[#222] p-2 rounded-lg"
+            >
+              <p
+                class="text-xs font-black text-gray-900 dark:text-white"
+                id="global-cnt-prod"
+              >
+                0
+              </p>
+              <p
+                class="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase"
+              >
+                Itens
+              </p>
+            </div>
+            <div
+              class="bg-white dark:bg-[#111] border border-gray-200 dark:border-[#222] p-2 rounded-lg"
+            >
+              <p
+                class="text-xs font-black text-gray-900 dark:text-white"
+                id="global-cnt-ped"
+              >
+                0
+              </p>
+              <p
+                class="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase"
+              >
+                Peds
+              </p>
+            </div>
+          </div>
+        </div>
+        <div
+          class="p-4 border-t border-gray-200 dark:border-[#1E1E1E] bg-white dark:bg-[#0A0A0A]"
+        >
+          <div
+            class="flex items-center justify-between bg-gray-50 dark:bg-[#111] p-3 rounded-xl border border-gray-200 dark:border-[#222]"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-[0_0_15px_rgba(37,99,235,0.3)]"
+                id="user-avatar"
+              >
+                --
+              </div>
+              <div class="text-sm">
+                <p
+                  class="font-bold text-gray-900 dark:text-white w-28 truncate tracking-tight text-xs uppercase"
+                  id="company-name"
+                >
+                  --
+                </p>
+                <p
+                  class="text-[10px] text-gray-500 dark:text-gray-400 w-28 truncate font-medium lowercase"
+                  id="user-email-display"
+                >
+                  --
+                </p>
+              </div>
+            </div>
+            <button
+              onclick="fazerLogout()"
+              class="text-gray-400 dark:text-gray-500 hover:text-red-500 bg-white dark:bg-[#1A1A1A] p-2 rounded-lg border border-gray-200 dark:border-[#333] transition-colors"
+            >
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CONTEÚDO PRINCIPAL -->
+      <main class="flex-1 overflow-y-auto h-full flex flex-col relative w-full">
+        <header
+          class="bg-white/90 dark:bg-transparent dark:glass-header backdrop-blur-xl border-b border-gray-200 dark:border-[#1E1E1E] flex items-center justify-between px-4 md:px-8 py-4 sticky top-0 z-30"
+        >
+          <div class="flex items-center gap-4">
+            <button
+              onclick="toggleSidebar()"
+              class="md:hidden text-gray-700 dark:text-white bg-gray-100 dark:bg-[#111] p-2 rounded-lg border border-gray-200 dark:border-[#333]"
+            >
+              <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
+            <h2
+              id="page-title"
+              class="text-xl md:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter"
+            >
+              Dashboard
+            </h2>
+            <div
+              id="user-badge"
+              class="hidden md:block px-3 py-1 rounded-full text-[10px] font-black uppercase border border-gray-300 dark:border-gray-700"
+            ></div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- BOTÃO DE TEMA CLARO/ESCURO -->
+            <button
+              onclick="toggleTheme()"
+              class="p-2 rounded-full bg-gray-100 dark:bg-[#111] border border-gray-200 dark:border-[#333] text-gray-600 dark:text-yellow-400 hover:bg-gray-200 dark:hover:bg-[#222] transition-colors"
+              title="Mudar Tema"
+            >
+              <i data-lucide="moon" class="w-4 h-4 dark:hidden"></i>
+              <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+            </button>
+
+            <div id="filtro-padrao" class="flex items-center bg-gray-100 dark:bg-[#111] border border-gray-200 dark:border-[#333] px-3 py-1.5 rounded-xl gap-2 shadow-sm">
+  <div class="flex items-center gap-1 border-r border-gray-300 dark:border-[#333] pr-2">
+    <select id="filter-type" onchange="toggleFilterInput()" class="bg-transparent text-[10px] font-black uppercase outline-none cursor-pointer text-gray-800 dark:text-white">
+      <option value="month" class="dark:bg-[#111]">Mês</option>
+      <option value="day" class="dark:bg-[#111]">Dia</option>
+    </select>
+  </div>
+  <!-- Input para Mês (YYYY-MM) -->
+  <input type="month" id="filter-month" class="text-[10px] font-black text-gray-800 dark:text-white uppercase bg-transparent outline-none cursor-pointer" />
+  <!-- Input para Dia (YYYY-MM-DD) - começa escondido -->
+  <input type="date" id="filter-date" class="hidden text-[10px] font-black text-gray-800 dark:text-white uppercase bg-transparent outline-none cursor-pointer" />
+
+  <button onclick="aplicarFiltro()" class="text-blue-600 p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg"><i data-lucide="check" class="w-3 h-3"></i></button>
+  <button onclick="limparFiltros()" class="text-red-500 p-1.5 bg-red-100 dark:bg-[#222] rounded-lg"><i data-lucide="rotate-ccw" class="w-3 h-3"></i></button>
+</div>
+          </div>
+        </header>
+
+        <div class="p-4 md:p-8 flex-1">
+          <!-- VIEW DASHBOARD -->
+          <div id="view-dashboard" class="view-section active">
+            <div
+              class="admin-only hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8"
+            >
+              <div
+                class="bg-white dark:bg-transparent dark:glass-card p-6 rounded-2xl border border-gray-200 dark:border-[#1E1E1E] shadow-sm relative overflow-hidden group"
+              >
+                <div
+                  class="absolute -right-4 -top-4 opacity-[0.05] dark:opacity-10"
+                >
+                  <i
+                    data-lucide="trending-up"
+                    class="w-24 h-24 text-green-600 dark:text-blue-500"
+                  ></i>
+                </div>
+                <div class="relative z-10">
+                  <p
+                    class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1"
+                  >
+                    Faturamento
+                  </p>
+                  <h2
+                    class="text-3xl font-black text-gray-900 dark:text-white"
+                    id="kpi-receita"
+                  >
+                    R$ 0,00
+                  </h2>
+                </div>
+              </div>
+              <div
+                class="bg-white dark:bg-transparent dark:glass-card p-6 rounded-2xl border border-gray-200 dark:border-[#1E1E1E] shadow-sm relative overflow-hidden group"
+              >
+                <div
+                  class="absolute -right-4 -top-4 opacity-[0.05] dark:opacity-10"
+                >
+                  <i
+                    data-lucide="trending-down"
+                    class="w-24 h-24 text-red-600 dark:text-white"
+                  ></i>
+                </div>
+                <div class="relative z-10">
+                  <p
+                    class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1"
+                  >
+                    Despesas
+                  </p>
+                  <h2
+                    class="text-3xl font-black text-gray-900 dark:text-white"
+                    id="kpi-despesa"
+                  >
+                    R$ 0,00
+                  </h2>
+                </div>
+              </div>
+              <div
+                class="bg-white dark:bg-transparent dark:glass-card p-6 rounded-2xl border border-gray-200 dark:border-[#1E1E1E] shadow-sm relative overflow-hidden group"
+              >
+                <div
+                  class="absolute -right-4 -top-4 opacity-[0.05] dark:opacity-10"
+                >
+                  <i
+                    data-lucide="package"
+                    class="w-24 h-24 text-blue-600 dark:text-blue-500"
+                  ></i>
+                </div>
+                <div class="relative z-10">
+                  <p
+                    class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1"
+                  >
+                    Estoque
+                  </p>
+                  <h2
+                    class="text-3xl font-black text-gray-900 dark:text-white"
+                    id="kpi-estoque"
+                  >
+                    0
+                  </h2>
+                </div>
+              </div>
+              <div
+                class="bg-white dark:bg-transparent dark:glass-card p-6 rounded-2xl border border-gray-200 dark:border-[#1E1E1E] shadow-sm relative overflow-hidden group"
+              >
+                <div
+                  class="absolute -right-4 -top-4 opacity-[0.05] dark:opacity-10"
+                >
+                  <i
+                    data-lucide="shopping-cart"
+                    class="w-24 h-24 text-orange-500 dark:text-white"
+                  ></i>
+                </div>
+                <div class="relative z-10">
+                  <p
+                    class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1"
+                  >
+                    Pedidos
+                  </p>
+                  <h2
+                    class="text-3xl font-black text-gray-900 dark:text-white"
+                    id="kpi-pedidos"
+                  >
+                    0
+                  </h2>
+                </div>
+              </div>
+            </div>
+            <div class="tech-only hidden mb-8">
+              <div class="flex items-center gap-2 mb-4">
+                <i
+                  data-lucide="activity"
+                  class="text-blue-600 dark:text-blue-500 w-5 h-5"
+                ></i>
+                <h3
+                  class="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tighter"
+                  id="tech-dash-title"
+                >
+                  Meu Resumo
+                </h3>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                <div
+                  class="bg-blue-50 dark:bg-transparent dark:glass-card p-6 rounded-2xl border border-blue-100 dark:border-blue-500/30 relative overflow-hidden"
+                >
+                  <div class="absolute right-[-10px] top-[-10px] opacity-10">
+                    <i
+                      data-lucide="plus-circle"
+                      class="w-24 h-24 text-blue-500"
+                    ></i>
+                  </div>
+                  <div class="relative z-10">
+                    <p
+                      class="text-[10px] font-black tracking-widest uppercase text-blue-600 dark:text-blue-400 mb-2"
+                    >
+                      Comissões (+)
+                    </p>
+                    <h3
+                      id="dash-tech-com"
+                      class="text-3xl font-black text-gray-900 dark:text-white tracking-tight"
+                    >
+                      R$ 0,00
+                    </h3>
+                  </div>
+                </div>
+                <div
+                  class="bg-red-50 dark:bg-transparent dark:glass-card p-6 rounded-2xl border border-red-100 dark:border-[#333] relative overflow-hidden"
+                >
+                  <div class="absolute right-[-10px] top-[-10px] opacity-10">
+                    <i
+                      data-lucide="minus-circle"
+                      class="w-24 h-24 text-red-500 dark:text-white"
+                    ></i>
+                  </div>
+                  <div class="relative z-10">
+                    <p
+                      class="text-[10px] font-black tracking-widest uppercase text-red-600 dark:text-gray-400 mb-2"
+                    >
+                      Prejuízos (-)
+                    </p>
+                    <h3
+                      id="dash-tech-prej"
+                      class="text-3xl font-black text-gray-900 dark:text-white tracking-tight"
+                    >
+                      R$ 0,00
+                    </h3>
+                  </div>
+                </div>
+                <div
+                  class="bg-green-600 dark:bg-blue-600 p-6 rounded-2xl shadow-lg dark:shadow-[0_0_20px_rgba(37,99,235,0.3)] relative overflow-hidden"
+                >
+                  <div class="absolute right-[-10px] top-[-10px] opacity-20">
+                    <i data-lucide="wallet" class="w-24 h-24 text-black"></i>
+                  </div>
+                  <div class="relative z-10">
+                    <p
+                      class="text-[10px] font-black tracking-widest uppercase text-white dark:text-blue-200 mb-2"
+                    >
+                      Líquido a Receber
+                    </p>
+                    <h3
+                      id="dash-tech-liq"
+                      class="text-3xl font-black text-white tracking-tight"
+                    >
+                      R$ 0,00
+                    </h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+              <div
+                class="lg:col-span-2 bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] p-6 rounded-2xl flex flex-col"
+              >
+                <div class="flex items-center justify-between mb-4">
+                  <h3
+                    class="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tighter"
+                    id="titulo-grafico"
+                  >
+                    Analytics
+                  </h3>
+                  <span
+                    class="px-2 py-1 bg-gray-100 dark:bg-[#222] text-gray-600 dark:text-blue-400 border border-gray-200 dark:border-[#333] rounded text-[9px] font-bold uppercase"
+                    id="chart-period"
+                    >Atual</span
+                  >
+                </div>
+                <div class="flex-1 relative min-h-[250px] w-full">
+                  <canvas id="dashboardChart"></canvas>
+                </div>
+              </div>
+              <div
+                class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] p-6 rounded-2xl flex flex-col h-[350px]"
+              >
+                <h3
+                  class="text-sm font-black text-gray-900 dark:text-white mb-4 uppercase tracking-tighter"
+                >
+                  Últimos Lançamentos
+                </h3>
+                <div class="flex-1 overflow-y-auto pr-2">
+                  <ul id="list-recent-services" class="space-y-3"></ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW ESTOQUE -->
+          <div id="view-estoque" class="view-section">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                Gestão de Inventário
+              </p>
+              <button
+                onclick="openModal('modal-produto')"
+                class="bg-gray-900 text-white dark:bg-white dark:text-black px-5 py-2.5 rounded-xl text-sm font-black items-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors uppercase tracking-wide shadow-md"
+              >
+                <i data-lucide="plus" class="w-4 h-4 inline-block"></i>
+                Adicionar
+              </button>
+            </div>
+            <div
+              class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] rounded-2xl overflow-hidden flex flex-col"
+            >
+              <div class="overflow-x-auto">
+                <table class="w-full text-left whitespace-nowrap">
+                  <thead>
+                    <tr
+                      class="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-[#222] text-[10px] uppercase text-gray-500 font-black tracking-wider"
+                    >
+                      <th class="p-4">Data</th>
+                      <th class="p-4">Produto</th>
+                      <th class="p-4">Custo</th>
+                      <th class="p-4 text-center">Estoque</th>
+                      <th class="admin-only hidden p-4 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    id="table-estoque"
+                    class="text-sm divide-y divide-gray-100 dark:divide-[#222]"
+                  ></tbody>
+                </table>
+              </div>
+              <div
+                id="pag-estoque"
+                class="p-4 border-t border-gray-200 dark:border-[#222] bg-white dark:bg-[#0A0A0A]/50 flex justify-between items-center flex-wrap gap-4"
+              ></div>
+            </div>
+          </div>
+
+          <!-- VIEW SERVIÇOS -->
+          <div id="view-servicos" class="view-section">
+            <div
+              class="admin-only hidden grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"
+            >
+              <div
+                class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] p-5 rounded-2xl"
+              >
+                <p
+                  class="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1"
+                >
+                  Cobrado (Lista)
+                </p>
+                <h3
+                  id="srv-kpi-cobrado"
+                  class="text-2xl font-black text-gray-900 dark:text-white"
+                >
+                  R$ 0,00
+                </h3>
+              </div>
+              <div
+                class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] p-5 rounded-2xl"
+              >
+                <p
+                  class="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1"
+                >
+                  Custos (Lista)
+                </p>
+                <h3
+                  id="srv-kpi-custo"
+                  class="text-2xl font-black text-gray-900 dark:text-white"
+                >
+                  R$ 0,00
+                </h3>
+              </div>
+              <div
+                class="bg-green-600 dark:bg-blue-600 p-5 rounded-2xl shadow-md dark:shadow-[0_0_15px_rgba(37,99,235,0.3)]"
+              >
+                <p
+                  class="text-[10px] font-black text-green-100 dark:text-blue-200 uppercase tracking-widest mb-1"
+                >
+                  Lucro Real
+                </p>
+                <h3 id="srv-kpi-lucro" class="text-3xl font-black text-white">
+                  R$ 0,00
+                </h3>
+              </div>
+            </div>
+            <div
+              class="tech-only hidden grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"
+            >
+              <div
+                class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] p-5 rounded-2xl"
+              >
+                <p
+                  class="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-1"
+                >
+                  Comissões (Lista)
+                </p>
+                <h3
+                  id="tech-kpi-comissao"
+                  class="text-2xl font-black text-gray-900 dark:text-white"
+                >
+                  R$ 0,00
+                </h3>
+              </div>
+              <div
+                class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] p-5 rounded-2xl"
+              >
+                <p
+                  class="text-[10px] font-black uppercase tracking-widest text-red-500 dark:text-gray-400 mb-1"
+                >
+                  Prejuízos
+                </p>
+                <h3
+                  id="tech-kpi-prejuizo"
+                  class="text-2xl font-black text-gray-900 dark:text-white"
+                >
+                  R$ 0,00
+                </h3>
+              </div>
+              <div class="bg-gray-900 dark:bg-white p-5 rounded-2xl shadow-md">
+                <p
+                  class="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1"
+                >
+                  Líquido
+                </p>
+                <h3
+                  id="tech-kpi-liq"
+                  class="text-3xl font-black text-white dark:text-black"
+                >
+                  R$ 0,00
+                </h3>
+              </div>
+            </div>
+            <div
+              class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] p-4 rounded-2xl mb-6 flex flex-wrap justify-between items-center gap-4"
+            >
+              <div
+                class="flex flex-wrap gap-4 md:gap-6 items-center w-full md:w-auto"
+              >
+                <div class="flex-1 md:flex-none">
+                  <label
+                    class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1 block"
+                    >Projeto</label
+                  ><select
+                    id="srv-group-filter"
+                    onchange="renderizarTabelaServicos()"
+                    class="font-bold border-b border-gray-300 dark:border-[#333] focus:border-blue-600 dark:focus:border-blue-500 pb-1 text-sm outline-none bg-transparent cursor-pointer text-gray-900 dark:text-white w-full"
+                  >
+                    <option value="ALL" class="dark:bg-[#111]">📂 Todos</option>
+                  </select>
+                </div>
+                <div class="admin-only hidden flex-1 md:flex-none">
+                  <div>
+                    <label
+                      class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1 block"
+                      >Técnico</label
+                    ><select
+                      id="srv-user-filter"
+                      onchange="renderizarTabelaServicos()"
+                      class="font-bold border-b border-gray-300 dark:border-[#333] focus:border-blue-600 dark:focus:border-blue-500 pb-1 text-sm text-blue-600 dark:text-blue-400 outline-none bg-transparent cursor-pointer w-full"
+                    >
+                      <option value="ALL" class="dark:bg-[#111]">
+                        👤 Todos
+                      </option>
+                    </select>
+                  </div>
+                </div>
+                <div class="flex-1 md:flex-none">
+                  <label
+                    class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1 block"
+                    >Busca (OS/Nome)</label
+                  >
+                  <div
+                    class="flex items-center gap-2 border-b border-gray-300 dark:border-[#333] focus-within:border-blue-600 dark:focus-within:border-blue-500 pb-1 w-full md:w-32"
+                  >
+                    <i
+                      data-lucide="search"
+                      class="w-3 h-3 text-gray-400 dark:text-gray-500"
+                    ></i
+                    ><input
+                      type="text"
+                      id="srv-os-filter"
+                      oninput="resetPageAndRender('servicos')"
+                      placeholder="Buscar..."
+                      class="font-bold text-sm w-full outline-none bg-transparent text-gray-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div class="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
+                <button
+                  id="btn-excluir-grupo-srv"
+                  onclick="deletarGrupoSrv()"
+                  class="hidden bg-gray-100 dark:bg-[#222] border border-gray-200 dark:border-[#333] text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-xs font-bold uppercase transition-colors hover:bg-gray-200 dark:hover:bg-[#333] flex-1 md:flex-none"
+                >
+                  Apagar
+                </button>
+                <button
+                  onclick="openModal('modal-grupo-srv')"
+                  class="bg-gray-100 dark:bg-[#222] border border-gray-200 dark:border-[#333] text-gray-700 dark:text-white px-4 py-2 rounded-xl text-xs font-bold uppercase hover:bg-gray-200 dark:hover:bg-[#333] transition-colors flex-1 md:flex-none"
+                >
+                  Projeto
+                </button>
+                <button
+                  onclick="abrirModalNovoServico()"
+                  class="bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-black shadow-md dark:shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-blue-700 dark:hover:bg-blue-500 transition-colors uppercase flex-1 md:flex-none"
+                >
+                  Novo Serviço
+                </button>
+              </div>
+            </div>
+            <div
+              class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] rounded-2xl overflow-hidden flex flex-col"
+            >
+              <div class="overflow-x-auto">
+                <table
+                  class="w-full text-left border-collapse whitespace-nowrap"
+                >
+                  <thead>
+                    <tr
+                      class="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-[#222] text-[10px] uppercase text-gray-500 font-black tracking-wider"
+                    ></tr>
+                  </thead>
+                  <tbody
+                    id="table-servicos"
+                    class="text-sm divide-y divide-gray-100 dark:divide-[#222]"
+                  ></tbody>
+                </table>
+              </div>
+              <div
+                id="pag-servicos"
+                class="p-4 border-t border-gray-200 dark:border-[#222] bg-white dark:bg-[#0A0A0A]/50 flex justify-between items-center flex-wrap gap-4"
+              ></div>
+            </div>
+          </div>
+
+          <!-- VIEW PEDIDOS -->
+          <div id="view-pedidos" class="view-section">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                Requisições a Fornecedores
+              </p>
+              <button
+                onclick="abrirModalPedido()"
+                class="bg-gray-900 text-white dark:bg-white dark:text-black px-5 py-2.5 rounded-xl text-sm font-black flex items-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors uppercase shadow-md"
+              >
+                <i data-lucide="send" class="w-4 h-4"></i> Requisitar
+              </button>
+            </div>
+            <div
+              class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] rounded-2xl overflow-hidden flex flex-col"
+            >
+              <div class="overflow-x-auto">
+                <table class="w-full text-left whitespace-nowrap">
+                  <thead>
+                    <tr
+                      class="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-[#222] text-[10px] uppercase text-gray-500 font-black tracking-wider"
+                    >
+                      <th class="p-4">Data</th>
+                      <th class="p-4">Resumo</th>
+                      <th class="p-4 text-center">Peças</th>
+                      <th class="p-4 text-center">Contato</th>
+                      <th class="p-4 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    id="table-pedidos"
+                    class="text-sm divide-y divide-gray-100 dark:divide-[#222]"
+                  ></tbody>
+                </table>
+              </div>
+              <div
+                id="pag-pedidos"
+                class="p-4 border-t border-gray-200 dark:border-[#222] bg-white dark:bg-[#0A0A0A]/50 flex justify-between items-center flex-wrap gap-4"
+              ></div>
+            </div>
+          </div>
+
+          <!-- VIEW FINANCEIRO -->
+          <div id="view-financeiro" class="view-section">
+            <div
+              class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] p-4 rounded-2xl mb-6 flex flex-wrap justify-between items-center gap-4"
+            >
+              <div class="flex items-center gap-3">
+                <div
+                  class="bg-blue-50 dark:bg-[#222] border border-transparent dark:border-[#333] p-2.5 rounded-xl text-blue-600 dark:text-blue-500"
+                >
+                  <i data-lucide="layers" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <p
+                    class="text-[9px] tracking-widest text-gray-500 uppercase font-black mb-1"
+                  >
+                    Conta / Centro
+                  </p>
+                  <select
+                    id="fin-group-filter"
+                    onchange="renderizarTabelaFinanceira()"
+                    class="font-bold border-b border-gray-300 dark:border-[#333] focus:border-blue-600 dark:focus:border-blue-500 pb-1 outline-none text-sm bg-transparent cursor-pointer text-gray-900 dark:text-white"
+                  >
+                    <option value="ALL" class="dark:bg-[#111]">💰 Geral</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex gap-2 w-full md:w-auto">
+                <button
+                  id="btn-excluir-grupo-fin"
+                  onclick="deletarGrupoFin()"
+                  class="hidden bg-gray-100 dark:bg-[#222] border border-gray-200 dark:border-[#333] text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-xs font-bold uppercase transition-colors hover:bg-gray-200 dark:hover:bg-[#333] flex-1 md:flex-none"
+                >
+                  Apagar</button
+                ><button
+                  onclick="openModal('modal-grupo-fin')"
+                  class="bg-gray-100 dark:bg-[#222] border border-gray-200 dark:border-[#333] text-gray-700 dark:text-white px-4 py-2 rounded-xl text-xs font-bold uppercase hover:bg-gray-200 dark:hover:bg-[#333] transition-colors flex-1 md:flex-none"
+                >
+                  Criar</button
+                ><button
+                  onclick="abrirModalTransacao()"
+                  class="bg-green-600 text-white px-5 py-2 rounded-xl text-sm font-black shadow-md dark:shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-green-700 dark:hover:bg-blue-500 transition-colors uppercase flex-1 md:flex-none"
+                >
+                  Lançar
+                </button>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+              <div
+                class="bg-green-50 dark:bg-transparent dark:glass-card border border-green-100 dark:border-[#1E1E1E] p-6 rounded-2xl relative overflow-hidden"
+              >
+                <div class="absolute right-[-10px] top-[-10px] opacity-10">
+                  <i
+                    data-lucide="arrow-up-right"
+                    class="w-24 h-24 text-green-600 dark:text-blue-500"
+                  ></i>
+                </div>
+                <div class="relative z-10">
+                  <p
+                    class="text-[10px] font-black tracking-widest uppercase text-green-700 dark:text-blue-400 mb-2"
+                  >
+                    Entradas
+                  </p>
+                  <h3
+                    id="grp-rec"
+                    class="text-3xl font-black text-gray-900 dark:text-white tracking-tight"
+                  >
+                    R$ 0,00
+                  </h3>
+                </div>
+              </div>
+              <div
+                class="bg-red-50 dark:bg-transparent dark:glass-card border border-red-100 dark:border-[#1E1E1E] p-6 rounded-2xl relative overflow-hidden"
+              >
+                <div class="absolute right-[-10px] top-[-10px] opacity-10">
+                  <i
+                    data-lucide="arrow-down-right"
+                    class="w-24 h-24 text-red-600 dark:text-white"
+                  ></i>
+                </div>
+                <div class="relative z-10">
+                  <p
+                    class="text-[10px] font-black tracking-widest uppercase text-red-700 dark:text-gray-400 mb-2"
+                  >
+                    Saídas
+                  </p>
+                  <h3
+                    id="grp-desp"
+                    class="text-3xl font-black text-gray-900 dark:text-white tracking-tight"
+                  >
+                    R$ 0,00
+                  </h3>
+                </div>
+              </div>
+              <div
+                class="bg-gray-900 dark:bg-white p-6 rounded-2xl shadow-xl relative overflow-hidden"
+              >
+                <div class="absolute right-[-10px] top-[-10px] opacity-10">
+                  <i
+                    data-lucide="wallet"
+                    class="w-24 h-24 text-white dark:text-black"
+                  ></i>
+                </div>
+                <div class="relative z-10">
+                  <p
+                    class="text-[10px] font-black tracking-widest uppercase text-gray-400 dark:text-gray-500 mb-2"
+                  >
+                    Balanço Líquido
+                  </p>
+                  <h3
+                    id="grp-saldo"
+                    class="text-3xl font-black text-white dark:text-black tracking-tight"
+                  >
+                    R$ 0,00
+                  </h3>
+                </div>
+              </div>
+            </div>
+            <div
+              class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] rounded-2xl overflow-hidden flex flex-col"
+            >
+              <div class="overflow-x-auto">
+                <table class="w-full text-left whitespace-nowrap">
+                  <thead>
+                    <tr
+                      class="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-[#222] text-[10px] uppercase text-gray-500 font-black tracking-wider"
+                    >
+                      <th class="p-4">Reg / Categoria</th>
+                      <th class="p-4">Histórico</th>
+                      <th class="p-4 text-right">Movimentação</th>
+                      <th class="p-4 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    id="table-financeiro"
+                    class="text-sm divide-y divide-gray-100 dark:divide-[#222]"
+                  ></tbody>
+                </table>
+              </div>
+              <div
+                id="pag-financeiro"
+                class="p-4 border-t border-gray-200 dark:border-[#222] bg-white dark:bg-[#0A0A0A]/50 flex justify-between items-center flex-wrap gap-4"
+              ></div>
+            </div>
+          </div>
+
+          <!-- VIEW USUÁRIOS E MASTER -->
+          <div id="view-usuarios" class="view-section">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                Controle de Acessos.
+              </p>
+              <button
+                onclick="openModal('modal-usuario')"
+                class="bg-gray-900 text-white dark:bg-white dark:text-black px-5 py-2.5 rounded-xl text-sm font-black flex items-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors uppercase shadow-md"
+              >
+                <i data-lucide="user-plus" class="w-4 h-4"></i> Integrante
+              </button>
+            </div>
+            <div
+              class="bg-white dark:bg-transparent dark:glass-card border border-gray-200 dark:border-[#1E1E1E] rounded-2xl overflow-hidden flex flex-col"
+            >
+              <div class="overflow-x-auto">
+                <table class="w-full text-left whitespace-nowrap">
+                  <thead>
+                    <tr
+                      class="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-[#222] text-[10px] uppercase text-gray-500 font-black tracking-wider"
+                    >
+                      <th class="p-4">Nome</th>
+                      <th class="p-4">Credencial</th>
+                      <th class="p-4">Permissão</th>
+                      <th class="p-4 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    id="table-usuarios"
+                    class="text-sm divide-y divide-gray-100 dark:divide-[#222]"
+                  ></tbody>
+                </table>
+              </div>
+              <div
+                id="pag-usuarios"
+                class="p-4 border-t border-gray-200 dark:border-[#222] bg-white dark:bg-[#0A0A0A]/50 flex justify-between items-center flex-wrap gap-4"
+              ></div>
+            </div>
+          </div>
+          <div id="view-master" class="view-section">
+            <div class="mb-8 border-b border-gray-200 dark:border-[#333] pb-4">
+              <h3
+                class="text-2xl font-black text-red-600 dark:text-blue-500 uppercase tracking-tighter dark:glow-blue inline-block"
+              >
+                Root Directory
+              </h3>
+            </div>
+            <div
+              class="bg-white dark:bg-transparent dark:glass-card border-2 border-gray-200 dark:border-[#1E1E1E] rounded-2xl overflow-hidden flex flex-col"
+            >
+              <div class="overflow-x-auto">
+                <table class="w-full text-left whitespace-nowrap">
+                  <thead
+                    class="bg-gray-900 dark:bg-[#050505] text-white dark:text-gray-400"
+                  >
+                    <tr class="text-[10px] font-black uppercase tracking-wider">
+                      <th class="p-4">Node</th>
+                      <th class="p-4">Admin Auth</th>
+                      <th class="p-4">License</th>
+                      <th class="p-4 text-center">Status</th>
+                      <th class="p-4 text-right">Execute</th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    id="table-master-companies"
+                    class="text-sm divide-y divide-gray-100 dark:divide-[#222]"
+                  ></tbody>
+                </table>
+              </div>
+              <div
+                id="pag-master"
+                class="p-4 border-t border-gray-200 dark:border-[#222] bg-white dark:bg-[#0A0A0A]/50 flex justify-between items-center flex-wrap gap-4"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ESTILOS GLOBAIS DOS MODAIS -->
+    <style>
+      .modal-input {
+        width: 100%;
+        background-color: rgb(249, 250, 251);
+        border: 1px solid rgb(229, 231, 235);
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        color: rgb(17, 24, 39);
+        outline: none;
+        transition: all 0.3s;
+      }
+      .dark .modal-input {
+        background-color: rgb(26, 26, 26);
+        border-color: rgb(51, 51, 51);
+        color: rgb(255, 255, 255);
+      }
+      .modal-input:focus {
+        border-color: rgb(37, 99, 235);
+      }
+      .dark .modal-input:focus {
+        border-color: rgb(59, 130, 246);
+      }
+      .modal-input:focus {
+        box-shadow: 0 0 0 1px rgb(59, 130, 246);
+      }
+
+      .modal-label {
+        font-size: 9px;
+        font-weight: 900;
+        color: rgb(107, 114, 128);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-bottom: 0.25rem;
+        display: block;
+      }
+      .dark .modal-label {
+        color: rgb(156, 163, 175);
+      }
+
+      .modal-btn-cancel {
+        padding: 0.625rem 1.25rem;
+        background-color: rgb(243, 244, 246);
+        border: 1px solid transparent;
+        color: rgb(75, 85, 99);
+        border-radius: 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        transition: all 0.3s;
+        cursor: pointer;
+      }
+      .modal-btn-cancel:hover {
+        color: rgb(17, 24, 39);
+      }
+      .dark .modal-btn-cancel {
+        background-color: rgb(34, 34, 34);
+        border-color: rgb(51, 51, 51);
+        color: rgb(156, 163, 175);
+      }
+      .dark .modal-btn-cancel:hover {
+        color: rgb(255, 255, 255);
+      }
+
+      .modal-btn-save {
+        padding: 0.625rem 1.25rem;
+        background-color: rgb(37, 99, 235);
+        color: rgb(255, 255, 255);
+        border-radius: 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+        border: none;
+        transition: all 0.3s;
+        cursor: pointer;
+      }
+      .modal-btn-save:hover {
+        background-color: rgb(29, 78, 216);
+      }
+      .dark .modal-btn-save {
+        box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+      }
+      .dark .modal-btn-save:hover {
+        background-color: rgb(59, 130, 246);
+      }
+    </style>
+
+    <!-- MODAIS REFEITOS -->
+    <div
+      id="modal-confirmacao"
+      class="fixed inset-0 bg-gray-900/60 dark:bg-[#050505]/80 hidden items-center justify-center z-[100] backdrop-blur-sm p-4"
+    >
+      <div
+        class="bg-white dark:bg-transparent dark:glass-card rounded-2xl shadow-2xl w-full max-w-[350px] p-6 text-center border border-transparent dark:border-red-500/30"
+      >
+        <div
+          class="w-14 h-14 bg-red-100 dark:bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-transparent dark:border-red-500/20"
+        >
+          <i
+            data-lucide="alert-triangle"
+            class="text-red-600 dark:text-red-500 w-7 h-7"
+          ></i>
+        </div>
+        <h3
+          class="text-xl font-black mb-2 uppercase text-gray-900 dark:text-white tracking-tight"
+        >
+          Confirmação
+        </h3>
+        <p
+          id="texto-confirmacao"
+          class="text-sm text-gray-500 dark:text-gray-400 mb-8 font-medium"
+        >
+          Deseja excluir este item?
+        </p>
+        <div class="flex justify-center gap-3">
+          <button
+            onclick="fecharModalConfirmacao()"
+            class="flex-1 modal-btn-cancel"
+          >
+            Cancelar</button
+          ><button
+            onclick="executarExclusao()"
+            class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 dark:hover:bg-red-500 text-white rounded-xl text-xs font-black uppercase shadow-md dark:shadow-[0_0_15px_rgba(220,38,38,0.4)] transition-colors"
+          >
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="modal-produto"
+      class="fixed inset-0 bg-gray-900/60 dark:bg-[#050505]/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4"
+    >
+      <div
+        class="bg-white dark:bg-transparent dark:glass-card p-6 rounded-2xl w-full max-w-[400px] border border-transparent dark:border-[#333] shadow-2xl"
+      >
+        <h3
+          class="text-xl font-black text-gray-900 dark:text-white mb-6 uppercase tracking-tighter"
+        >
+          Novo Item
+        </h3>
+        <form onsubmit="salvarProduto(event)">
+          <div class="space-y-4">
+            <div>
+              <label class="modal-label">Descrição</label
+              ><input
+                type="text"
+                id="prod-nome"
+                required
+                class="modal-input"
+                placeholder="Ex: Tela iPhone X"
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="modal-label">Custo Base (R$)</label
+                ><input
+                  type="number"
+                  id="prod-custo"
+                  step="0.01"
+                  required
+                  class="modal-input"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label class="modal-label">Estoque Inicial</label
+                ><input
+                  type="number"
+                  id="prod-estoque"
+                  required
+                  class="modal-input"
+                  placeholder="10"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 mt-8">
+            <button
+              type="button"
+              onclick="closeModal('modal-produto')"
+              class="modal-btn-cancel"
+            >
+              Cancelar</button
+            ><button type="submit" class="modal-btn-save">Registrar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL DE SERVIÇO (COMPACTO E LARGO) -->
+    <div
+      id="modal-servico"
+      class="fixed inset-0 bg-gray-900/60 dark:bg-[#050505]/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4 overflow-hidden"
+    >
+      <div
+        class="bg-white dark:bg-transparent dark:glass-card p-6 rounded-2xl w-full max-w-[650px] border border-transparent dark:border-[#333] shadow-2xl flex flex-col max-h-[90vh]"
+      >
+        <div class="flex justify-between items-center mb-4">
+          <h3
+            id="titulo-modal-servico"
+            class="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tighter"
+          >
+            Gerar Ordem
+          </h3>
+          <button
+            type="button"
+            onclick="closeModal('modal-servico')"
+            class="text-gray-400 hover:text-red-500"
+          >
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <form
+          onsubmit="salvarServico(event)"
+          class="overflow-y-auto pr-2 pb-2 flex-1 space-y-4"
+        >
+          <input type="hidden" id="serv-id-edit" value="" />
+
+          <!-- Linha 1: Projeto e OS -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="md:col-span-2">
+              <label class="modal-label">Projeto / Categoria</label
+              ><select id="serv-grupo-select" class="modal-input"></select>
+            </div>
+            <div>
+              <label class="modal-label">Nº O.S</label
+              ><input
+                type="text"
+                id="serv-os"
+                required
+                class="modal-input font-bold"
+                placeholder="001"
+              />
+            </div>
+          </div>
+
+          <!-- Linha 2: Cliente -->
+          <div>
+            <label class="modal-label text-blue-600 dark:text-blue-400"
+              >Nome do Cliente</label
+            ><input
+              type="text"
+              id="serv-cliente"
+              class="modal-input"
+              placeholder="João da Silva"
+            />
+          </div>
+
+          <!-- Linha 3: Estoque -->
+          <div
+            class="bg-gray-50 dark:bg-[#111] p-3 rounded-xl border border-gray-200 dark:border-[#222]"
+          >
+            <label class="modal-label text-gray-600 dark:text-gray-400"
+              >Vincular Peça do Estoque?</label
+            >
+            <div class="flex gap-2">
+              <select id="serv-peca-estoque" class="modal-input">
+                <option value="">Nenhuma (Mão de Obra)</option></select
+              ><input type="hidden" id="serv-peca-qtd" value="1" />
+            </div>
+          </div>
+
+          <!-- Linha 4: Serviço -->
+          <div>
+            <label class="modal-label">Aparelho / Serviço Executado</label
+            ><input
+              type="text"
+              id="serv-nome"
+              required
+              class="modal-input"
+              placeholder="Troca de Display iPhone X"
+            />
+          </div>
+
+          <!-- Linha 5: Financeiro (3 Colunas) -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="modal-label">Custo Extra (R$)</label
+              ><input
+                type="number"
+                id="serv-custo"
+                step="0.01"
+                value="0"
+                class="modal-input"
+              />
+            </div>
+            <div>
+              <label class="modal-label text-blue-600 dark:text-blue-400"
+                >Comissão (R$)</label
+              ><input
+                type="number"
+                id="serv-comissao"
+                step="0.01"
+                value="0"
+                class="modal-input border-blue-200 dark:border-blue-900 focus:border-blue-500"
+              />
+            </div>
+            <div class="admin-only hidden">
+              <label class="modal-label text-green-600 dark:text-white"
+                >Preço Final (R$)</label
+              ><input
+                type="number"
+                id="serv-preco"
+                step="0.01"
+                class="modal-input bg-green-50 dark:bg-white text-green-900 dark:text-black font-black"
+                placeholder="Acesso Admin"
+              />
+            </div>
+          </div>
+
+          <!-- Linha 6: Prejuízo -->
+          <div
+            class="bg-red-50 dark:bg-red-500/10 p-3 rounded-xl border border-red-100 dark:border-red-500/20 flex flex-col md:flex-row gap-3 items-center"
+          >
+            <div
+              class="w-full md:w-auto flex items-center justify-between gap-2"
+            >
+              <label
+                class="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest whitespace-nowrap"
+                >Danos / Prej. (R$):</label
+              >
+              <input
+                type="number"
+                id="serv-prejuizo"
+                step="0.01"
+                value="0"
+                class="bg-white dark:bg-[#1A1A1A] border border-red-200 dark:border-red-900 p-1.5 rounded text-sm text-red-600 dark:text-red-400 outline-none w-20 text-right font-bold"
+              />
+            </div>
+            <input
+              type="text"
+              id="serv-prejuizo-desc"
+              placeholder="Motivo do dano..."
+              class="w-full bg-white dark:bg-[#1A1A1A] border border-red-200 dark:border-[#333] p-1.5 rounded text-xs text-gray-800 dark:text-white outline-none focus:border-red-500"
+            />
+          </div>
+
+          <div
+            class="bg-blue-50 dark:bg-[#111] p-2 rounded-lg border border-blue-100 dark:border-[#222] flex justify-between items-center mt-2"
+          >
+            <span
+              class="text-[9px] font-black text-blue-600 dark:text-gray-500 uppercase tracking-widest"
+              >Técnico Operador:</span
+            >
+            <span
+              id="serv-responsavel-display"
+              class="font-black text-blue-800 dark:text-blue-400 text-xs uppercase tracking-wider"
+              >--</span
+            >
+          </div>
+
+          <div
+            class="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-[#222]"
+          >
+            <button
+              type="button"
+              onclick="closeModal('modal-servico')"
+              class="modal-btn-cancel"
+            >
+              Cancelar
+            </button>
+            <button type="submit" class="modal-btn-save">Processar O.S.</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Restante dos Modais -->
+    <div
+      id="modal-grupo-srv"
+      class="fixed inset-0 bg-gray-900/60 dark:bg-[#050505]/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4"
+    >
+      <div
+        class="bg-white dark:bg-transparent dark:glass-card p-6 rounded-2xl w-full max-w-[350px] border border-transparent dark:border-[#333] shadow-2xl"
+      >
+        <h3
+          class="text-xl font-black text-gray-900 dark:text-white mb-6 uppercase tracking-tighter"
+        >
+          Novo Projeto
+        </h3>
+        <form onsubmit="salvarGrupoSrv(event)">
+          <div>
+            <label class="modal-label">ID do Projeto</label
+            ><input
+              type="text"
+              id="grupo-srv-nome"
+              required
+              placeholder="Nome..."
+              class="modal-input"
+            />
+          </div>
+          <div class="flex justify-end gap-3 mt-8">
+            <button
+              type="button"
+              onclick="closeModal('modal-grupo-srv')"
+              class="modal-btn-cancel"
+            >
+              Cancelar</button
+            ><button
+              type="submit"
+              class="modal-btn-save dark:bg-white dark:text-black dark:hover:bg-gray-200 dark:shadow-[0_0_15px_rgba(255,255,255,0.4)] border-none"
+            >
+              Criar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div
+      id="modal-financeiro"
+      class="fixed inset-0 bg-gray-900/60 dark:bg-[#050505]/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4"
+    >
+      <div
+        class="bg-white dark:bg-transparent dark:glass-card p-6 rounded-2xl w-full max-w-[400px] border border-transparent dark:border-[#333] shadow-2xl"
+      >
+        <h3
+          class="text-xl font-black text-gray-900 dark:text-white mb-6 uppercase tracking-tighter"
+        >
+          Lançamento
+        </h3>
+        <form onsubmit="salvarTransacao(event)">
+          <div class="space-y-4">
+            <div>
+              <label class="modal-label">Diretório</label
+              ><select id="fin-grupo-select" class="modal-input"></select>
+            </div>
+            <div>
+              <label class="modal-label">Hash (Descrição)</label
+              ><input
+                type="text"
+                id="fin-desc"
+                placeholder="Detalhes..."
+                required
+                class="modal-input"
+              />
+            </div>
+            <div class="flex gap-3">
+              <div class="w-1/2">
+                <label class="modal-label">Fluxo</label
+                ><select id="fin-tipo" class="modal-input">
+                  <option value="INCOME">Receita (+)</option>
+                  <option value="EXPENSE">Despesa (-)</option>
+                </select>
+              </div>
+              <div class="w-1/2">
+                <label class="modal-label">Montante (R$)</label
+                ><input
+                  type="number"
+                  id="fin-valor"
+                  step="0.01"
+                  required
+                  placeholder="0.00"
+                  class="modal-input"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 mt-8">
+            <button
+              type="button"
+              onclick="closeModal('modal-financeiro')"
+              class="modal-btn-cancel"
+            >
+              Cancelar</button
+            ><button type="submit" class="modal-btn-save">Confirmar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div
+      id="modal-grupo-fin"
+      class="fixed inset-0 bg-gray-900/60 dark:bg-[#050505]/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4"
+    >
+      <div
+        class="bg-white dark:bg-transparent dark:glass-card p-6 rounded-2xl w-full max-w-[350px] border border-transparent dark:border-[#333] shadow-2xl"
+      >
+        <h3
+          class="text-xl font-black text-gray-900 dark:text-white mb-6 uppercase tracking-tighter"
+        >
+          Centro de Custo
+        </h3>
+        <form onsubmit="salvarGrupoFin(event)">
+          <div>
+            <label class="modal-label">Nome do Centro</label
+            ><input
+              type="text"
+              id="grupo-fin-nome"
+              required
+              placeholder="Ex: Operacional"
+              class="modal-input"
+            />
+          </div>
+          <div class="flex justify-end gap-3 mt-8">
+            <button
+              type="button"
+              onclick="closeModal('modal-grupo-fin')"
+              class="modal-btn-cancel"
+            >
+              Cancelar</button
+            ><button
+              type="submit"
+              class="modal-btn-save dark:bg-white dark:text-black dark:hover:bg-gray-200 dark:shadow-[0_0_15px_rgba(255,255,255,0.4)] border-none"
+            >
+              Criar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div
+      id="modal-usuario"
+      class="fixed inset-0 bg-gray-900/60 dark:bg-[#050505]/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4"
+    >
+      <div
+        class="bg-white dark:bg-transparent dark:glass-card p-6 rounded-2xl w-full max-w-[400px] border border-transparent dark:border-[#333] shadow-2xl"
+      >
+        <h3
+          class="text-xl font-black text-gray-900 dark:text-white mb-6 uppercase tracking-tighter"
+        >
+          Adicionar Node
+        </h3>
+        <form onsubmit="salvarUsuario(event)">
+          <div class="space-y-4">
+            <div>
+              <label class="modal-label">Identificação</label
+              ><input
+                type="text"
+                id="usr-nome"
+                placeholder="Nome Completo"
+                required
+                class="modal-input"
+              />
+            </div>
+            <div>
+              <label class="modal-label">Auth Login</label
+              ><input
+                type="email"
+                id="usr-email"
+                placeholder="E-mail"
+                required
+                class="modal-input"
+              />
+            </div>
+            <div>
+              <label class="modal-label">Security Key</label
+              ><input
+                type="password"
+                id="usr-senha"
+                placeholder="Senha"
+                required
+                class="modal-input"
+              />
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 mt-8">
+            <button
+              type="button"
+              onclick="closeModal('modal-usuario')"
+              class="modal-btn-cancel"
+            >
+              Cancelar</button
+            ><button
+              type="submit"
+              class="modal-btn-save dark:bg-white dark:text-black dark:hover:bg-gray-200 dark:shadow-[0_0_15px_rgba(255,255,255,0.4)] border-none"
+            >
+              Conceder Acesso
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div
+      id="modal-pedido"
+      class="fixed inset-0 bg-gray-900/60 dark:bg-[#050505]/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4"
+    >
+      <div
+        class="bg-white dark:bg-transparent dark:glass-card rounded-2xl shadow-2xl w-full max-w-[600px] border border-transparent dark:border-[#333] flex flex-col overflow-hidden max-h-[90vh]"
+      >
+        <div
+          class="p-6 border-b border-gray-200 dark:border-[#222] flex justify-between items-center bg-gray-50 dark:bg-[#0A0A0A]"
+        >
+          <h3
+            class="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tighter"
+          >
+            Nova Requisição
+          </h3>
+          <button
+            onclick="closeModal('modal-pedido')"
+            class="text-gray-500 hover:text-red-500 dark:hover:text-white"
+          >
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="p-6 flex-1 overflow-y-auto bg-white dark:bg-[#111]">
+          <div
+            class="bg-gray-50 dark:bg-[#1A1A1A] p-4 rounded-xl border border-gray-200 dark:border-[#333] mb-6 shadow-sm"
+          >
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              <div>
+                <label class="modal-label">Componente</label
+                ><select id="ped-peca" class="modal-input"></select>
+              </div>
+              <div>
+                <label class="modal-label">Hardware</label
+                ><select id="ped-modelo" class="modal-input"></select>
+              </div>
+              <div>
+                <label class="modal-label">Variante</label
+                ><select id="ped-cor" class="modal-input"></select>
+              </div>
+            </div>
+            <div class="flex gap-3 items-end">
+              <div class="w-24">
+                <label class="modal-label">Vol.</label
+                ><input
+                  type="number"
+                  id="ped-qtd"
+                  value="1"
+                  min="1"
+                  class="modal-input text-center"
+                />
+              </div>
+              <button
+                type="button"
+                onclick="adicionarItemAoCarrinho()"
+                class="flex-1 bg-gray-900 text-white dark:bg-white dark:text-black h-[41px] rounded-lg text-xs font-black uppercase tracking-widest hover:bg-black dark:hover:bg-gray-200 transition-all dark:shadow-[0_0_15px_rgba(255,255,255,0.2)] border-none"
+              >
+                Gravar na Matriz
+              </button>
+            </div>
+          </div>
+          <h4
+            class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3"
+          >
+            Matriz de Requisição:
+          </h4>
+          <ul id="lista-carrinho" class="space-y-2 mb-4"></ul>
+          <p
+            id="carrinho-vazio"
+            class="text-center text-gray-400 dark:text-gray-600 text-xs italic py-6 border border-dashed border-gray-200 dark:border-[#333] rounded-xl"
+          >
+            Matriz Vazia.
+          </p>
+        </div>
+        <div
+          class="p-6 border-t border-gray-200 dark:border-[#222] bg-gray-50 dark:bg-[#0A0A0A]"
+        >
+          <label class="modal-label text-green-600 dark:text-green-400"
+            >Link Externo (WhatsApp Fornecedor)</label
+          ><input
+            type="text"
+            id="ped-whatsapp"
+            placeholder="Ex: 11999999999"
+            class="modal-input border-green-200 dark:border-green-900 focus:border-green-500 mb-4"
+          /><button
+            type="button"
+            onclick="finalizarPedidoWhatsApp()"
+            class="w-full bg-[#25D366] text-white dark:text-black font-black py-4 rounded-xl text-xs uppercase tracking-widest shadow-md dark:shadow-[0_0_20px_rgba(37,211,102,0.4)] hover:bg-[#20bd5a] transition-all"
+          >
+            Transmitir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/script/core.js"></script>
+    <script src="/script/operacional.js"></script>
+    <script src="/script/admin.js"></script>
+    <script>
+      function toggleSidebar() {
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("overlay");
+        sidebar.classList.toggle("open");
+        overlay.classList.toggle("open");
+      }
+      document.querySelectorAll(".menu-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (window.innerWidth < 768) toggleSidebar();
+        });
+      });
+    </script>
+  </body>
+</html>
